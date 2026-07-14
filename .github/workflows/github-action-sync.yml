@@ -13,38 +13,41 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: ðŸ“¦ Clonar Repositorio
+      - name: 📦 Clonar Repositorio
         uses: actions/checkout@v4
 
-      - name: ðŸš€ Subir archivos a OrzattyCDN
+      - name: 🚀 Subir archivos a OrzattyCDN
         run: |
           # Cambia "public" por el nombre de tu carpeta a sincronizar
           cd public
           
-          # Sube cada archivo respetando el lÃ­mite de 50MB
-          find . -type f | while read file; do
-            filepath="${file:2}"
+          # Sube cada archivo respetando el límite de 50MB
+          find . -type f | while read -r file; do
+            filepath="${file#./}"
             echo "Subiendo $filepath..."
+            
+            # Obtenemos el mime-type de forma segura
+            mime_type=$(file -b --mime-type "$filepath")
             
             response=$(curl -s -w "\n%{http_code}" -X POST "https://cdn.orzatty.com/api/storage/publish/${{ github.event.repository.name }}/$filepath" \
               -H "Authorization: Bearer ${{ secrets.ORZATTY_CDN_TOKEN }}" \
-              -H "Content-Type: $(file -b --mime-type "$filepath")" \
+              -H "Content-Type: $mime_type" \
               --data-binary "@$filepath")
             
             http_code=$(echo "$response" | tail -n1)
             body=$(echo "$response" | head -n-1)
             
             if [ "$http_code" -ne 200 ]; then
-              echo "âŒ Error al subir $filepath (Status: $http_code)"
+              echo "❌ Error al subir $filepath (Status: $http_code)"
               echo "Mensaje: $body"
               exit 1
             else
-              echo "âœ… $filepath subido exitosamente."
+              echo "✅ $filepath subido exitosamente."
             fi
           done
 
-      - name: ðŸŽ‰ Reporte de Despliegue
+      - name: 🎉 Reporte de Despliegue
         run: |
-          echo "SincronizaciÃ³n completada exitosamente."
-          echo "Tus archivos estÃ¡n ahora disponibles globalmente en:"
-          echo "ðŸ‘‰ https://cdn.orzatty.com/storage/${{ github.event.repository.name }}/"
+          echo "Sincronización completada exitosamente."
+          echo "Tus archivos están ahora disponibles globalmente en:"
+          echo "👉 https://cdn.orzatty.com/storage/${{ github.event.repository.name }}/"
