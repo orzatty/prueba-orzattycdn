@@ -1,0 +1,53 @@
+name: OrzattyCDN Secure Auto-Sync
+
+on:
+  push:
+    branches:
+      - main # O la rama que prefieras (ej. master, production)
+    paths:
+      - '/**' # Cambia esto a la carpeta que quieres sincronizar (ej. dist/**, assets/**)
+
+jobs:
+  deploy-to-cdn:
+    name: Sincronizar con OrzattyCDN (Edge Storage)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📦 Clonar Repositorio
+        uses: actions/checkout@v4
+
+      - name: 🚀 Subir archivos a OrzattyCDN
+        run: |
+          # Cambia "public" por el nombre de tu carpeta a sincronizar
+          cd public
+          
+          # Sube cada archivo respetando el límite de 50MB
+          find . -type f | while read -r file; do
+            filepath="${file#./}"
+            echo "Subiendo $filepath..."
+            
+            # Obtenemos el mime-type de forma segura
+            mime_type=$(file -b --mime-type "$filepath")
+            
+            response=$(curl -s -w "\n%{http_code}" -X POST "https://cdn.orzatty.com/api/storage/publish/${{ github.event.repository.name }}/$filepath" \
+              -H "Authorization: Bearer ${{ secrets.ORZATTY_CDN_TOKEN }}" \
+              -H "Content-Type: $mime_type" \
+              --data-binary "@$filepath")
+            
+            http_code=$(echo "$response" | tail -n1)
+            body=$(echo "$response" | head -n-1)
+            
+            if [ "$http_code" -ne 200 ]; then
+              echo "❌ Error al subir $filepath (Status: $http_code)"
+              echo "Mensaje: $body"
+              exit 1
+            else
+              echo "✅ $filepath subido exitosamente."
+            fi
+          done
+
+      - name: 🎉 Reporte de Despliegue
+        run: |
+          echo "Sincronización completada exitosamente."
+          echo "Tus archivos están ahora disponibles globalmente en:"
+          echo "👉 https://cdn.orzatty.com/storage/${{ github.event.repository.name }}/"
