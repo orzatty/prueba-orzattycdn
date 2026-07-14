@@ -5,7 +5,7 @@ on:
     branches:
       - main # O la rama que prefieras (ej. master, production)
     paths:
-      - 'public/**' # Cambia esto a la carpeta que quieres sincronizar (ej. dist/**, assets/**)
+      - '/**' # Cambia esto a la carpeta que quieres sincronizar (ej. dist/**, assets/**)
 
 jobs:
   deploy-to-cdn:
